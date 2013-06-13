@@ -5,40 +5,40 @@ using System.Text;
 namespace TextExtractor
 {
 	[Flags]
-	public enum IFILTER_INIT : uint
+	public enum FilterSettings : uint
 	{
-		NONE = 0,
-		CANON_PARAGRAPHS = 1,
-		HARD_LINE_BREAKS = 2,
-		CANON_HYPHENS = 4,
-		CANON_SPACES = 8,
-		APPLY_INDEX_ATTRIBUTES = 16,
-		APPLY_CRAWL_ATTRIBUTES = 256,
-		APPLY_OTHER_ATTRIBUTES = 32,
-		INDEXING_ONLY = 64,
-		SEARCH_LINKS = 128,
-		FILTER_OWNED_VALUE_OK = 512
+		None = 0,
+		CanonParagraphs = 1,
+		HardLineBreaks = 2,
+		CanonHyphens = 4,
+		CanonSpaces = 8,
+		ApplyIndexAttributes = 16,
+		ApplyCrawlAttributes = 256,
+		ApplyOtherAttributes = 32,
+		IndexingOnly = 64,
+		SearchLinks = 128,
+		FilterOwnedValueOk = 512
 	}
 
-	public enum CHUNK_BREAKTYPE
+	public enum ChunkBreaktype
 	{
-		CHUNK_NO_BREAK = 0,
-		CHUNK_EOW = 1,
-		CHUNK_EOS = 2,
-		CHUNK_EOP = 3,
-		CHUNK_EOC = 4
+		ChunkNoBreak = 0,
+		ChunkEow = 1,
+		ChunkEos = 2,
+		ChunkEop = 3,
+		ChunkEoc = 4
 	}
 
 	[Flags]
-	public enum CHUNKSTATE
+	public enum Chunkstate
 	{
-		CHUNK_TEXT = 0x1,
-		CHUNK_VALUE = 0x2,
-		CHUNK_FILTER_OWNED_VALUE = 0x4
+		ChunkText = 0x1,
+		ChunkValue = 0x2,
+		ChunkFilterOwnedValue = 0x4
 	}
 
 	[StructLayout(LayoutKind.Sequential)]
-	public struct PROPSPEC
+	public struct Propspec
 	{
 		public uint ulKind;
 		public uint propid;
@@ -46,30 +46,30 @@ namespace TextExtractor
 	}
 
 	[StructLayout(LayoutKind.Sequential)]
-	public struct FULLPROPSPEC
+	public struct FullPropSpec
 	{
 		public Guid guidPropSet;
-		public PROPSPEC psProperty;
+		public Propspec psProperty;
 	}
 
 	[StructLayout(LayoutKind.Sequential)]
-	public struct STAT_CHUNK
+	public struct StatChunk
 	{
 		public uint idChunk;
 		[MarshalAs(UnmanagedType.U4)]
-		public CHUNK_BREAKTYPE breakType;
+		public ChunkBreaktype breakType;
 		[MarshalAs(UnmanagedType.U4)]
-		public CHUNKSTATE flags;
+		public Chunkstate flags;
 		public uint locale;
 		[MarshalAs(UnmanagedType.Struct)]
-		public FULLPROPSPEC attribute;
+		public FullPropSpec attribute;
 		public uint idChunkSource;
 		public uint cwcStartSource;
 		public uint cwcLenSource;
 	}
 
 	[StructLayout(LayoutKind.Sequential)]
-	public struct FILTERREGION
+	public struct FilterRegion
 	{
 		public uint idChunk;
 		public uint cwcStart;
@@ -82,28 +82,28 @@ namespace TextExtractor
 	public interface IFilter
 	{
 		[PreserveSig]
-		int Init([MarshalAs(UnmanagedType.U4)] IFILTER_INIT grfFlags, uint cAttributes,
-		         [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] FULLPROPSPEC[] aAttributes, ref uint pdwFlags);
+		int Init([MarshalAs(UnmanagedType.U4)] FilterSettings grfFlags, uint cAttributes,
+		         [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] FullPropSpec[] aAttributes, ref uint pdwFlags);
 
 		[PreserveSig]
-		int GetChunk(out STAT_CHUNK pStat);
+		int GetChunk(out StatChunk pStat);
 
 		[PreserveSig]
 		int GetText(ref uint pcwcBuffer, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder buffer);
 
 		void GetValue(ref UIntPtr ppPropValue);
-		void BindRegion([MarshalAs(UnmanagedType.Struct)] FILTERREGION origPos, ref Guid riid, ref UIntPtr ppunk);
+		void BindRegion([MarshalAs(UnmanagedType.Struct)] FilterRegion origPos, ref Guid riid, ref UIntPtr ppunk);
 	}
 
-	public enum IFilterReturnCodes : uint
+	public enum FilterReturnCodes : uint
 	{
 		/// Success
-		S_OK = 0,
+		Success = 0,
 
 		/// This is the last text in the current chunk
-		FILTER_S_LAST_TEXT = 0x00041709,
+		LastTextInCurrentChunk = 0x00041709,
 
 		/// This is the last value in the current chunk
-		FILTER_S_LAST_VALUES = 0x0004170A
+		LastValueInCurrentChunk = 0x0004170A
 	}
 }

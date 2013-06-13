@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 
 namespace TextExtractor
@@ -35,7 +36,7 @@ namespace TextExtractor
 			IFilter filter = null;
 
 			// Try to load the corresponding IFilter
-			if (LoadIFilter(filename, null, ref filter) == (int)IFilterReturnCodes.S_OK)
+			if (LoadIFilter(filename, null, ref filter) == (int)FilterReturnCodes.Success)
 				return filter;
 
 			return null;
@@ -45,36 +46,34 @@ namespace TextExtractor
 		private static extern int LoadIFilter(string pwcsPath, [MarshalAs(UnmanagedType.IUnknown)] object pUnkOuter, ref IFilter ppIUnk);
 
 		[DllImport("query.dll", CharSet = CharSet.Unicode)]
-		private static extern int BindIFilterFromStream(System.Runtime.InteropServices.ComTypes.IStream pStm, 
+		private static extern int BindIFilterFromStream(IStream pStm, 
 														[MarshalAs(UnmanagedType.IUnknown)] object pUnkOuter,
 														[Out] out IFilter ppIUnk);
 
 		[DllImport("ole32.dll", CharSet = CharSet.Unicode)]
-		private static extern void CreateStreamOnHGlobal(IntPtr hGlobal, bool fDeleteOnRelease, 
-														[Out] out System.Runtime.InteropServices.ComTypes.IStream pStream);
+		private static extern void CreateStreamOnHGlobal(IntPtr hGlobal, bool fDeleteOnRelease, [Out] out IStream pStream);
 
 		private static IFilter LoadIFilter(Stream stream)
 		{
-
 			// copy stream to byte array
 			var b = new byte[stream.Length];
 			stream.Read(b, 0, b.Length);
 
 			// allocate space on the native heap
-			IntPtr nativePtr = Marshal.AllocHGlobal(b.Length);
+			var nativePtr = Marshal.AllocHGlobal(b.Length);
 	
 			// copy byte array to native heap
 			Marshal.Copy(b, 0, nativePtr, b.Length);
 
 			// Create a UCOMIStream from the allocated memory
-			System.Runtime.InteropServices.ComTypes.IStream comStream;
+			IStream comStream;
 
 			CreateStreamOnHGlobal(nativePtr, true, out comStream);
 
 			// Try to load the corresponding IFilter 
 			IFilter filter;
 			int resultLoad = BindIFilterFromStream(comStream, null, out filter);
-			if (resultLoad == (int)IFilterReturnCodes.S_OK)
+			if (resultLoad == (int)FilterReturnCodes.Success)
 				return filter;
 
 			Marshal.ThrowExceptionForHR(resultLoad);
@@ -135,28 +134,28 @@ namespace TextExtractor
 
 		private static void InitializeFilter(string path, IFilter filter)
 		{
-			const IFILTER_INIT iflags = IFILTER_INIT.CANON_HYPHENS |
-										IFILTER_INIT.CANON_PARAGRAPHS |
-										IFILTER_INIT.CANON_SPACES |
-										IFILTER_INIT.APPLY_CRAWL_ATTRIBUTES |
-										IFILTER_INIT.APPLY_INDEX_ATTRIBUTES |
-										IFILTER_INIT.APPLY_OTHER_ATTRIBUTES |
-										IFILTER_INIT.HARD_LINE_BREAKS |
-										IFILTER_INIT.SEARCH_LINKS |
-										IFILTER_INIT.FILTER_OWNED_VALUE_OK;
+			const FilterSettings iflags = FilterSettings.CanonHyphens
+										| FilterSettings.CanonParagraphs
+										| FilterSettings.CanonSpaces
+										| FilterSettings.ApplyCrawlAttributes
+										| FilterSettings.ApplyIndexAttributes
+										| FilterSettings.ApplyOtherAttributes
+										| FilterSettings.HardLineBreaks
+										| FilterSettings.SearchLinks
+										| FilterSettings.FilterOwnedValueOk;
 
 			uint i = 0;
-			if (filter.Init(iflags, 0, null, ref i) != (int)IFilterReturnCodes.S_OK)
+			if (filter.Init(iflags, 0, null, ref i) != (int)FilterReturnCodes.Success)
 				throw new Exception(string.Format("Could not initialize an IFilter for: '{0}'", path));
 		}
 
 		private static IEnumerable<string> GetTexts(IFilter filter)
 		{
-			STAT_CHUNK chunkInfo;
+			StatChunk chunkInfo;
 
-			while (filter.GetChunk(out chunkInfo) == (int)(IFilterReturnCodes.S_OK))
+			while (filter.GetChunk(out chunkInfo) == (int)(FilterReturnCodes.Success))
 			{
-				if (chunkInfo.flags != CHUNKSTATE.CHUNK_TEXT)
+				if (chunkInfo.flags != Chunkstate.ChunkText)
 					continue;
 
 				var chunks = GetTextChunks(filter);
@@ -167,14 +166,14 @@ namespace TextExtractor
 
 		private static IEnumerable<string> GetTextChunks(IFilter filter)
 		{
-			IFilterReturnCodes scode;
+			FilterReturnCodes scode;
 
 			do
 			{
 				uint pcwcBuffer = 65536;
 				var chunkBuffer = new StringBuilder((int)pcwcBuffer);
 
-				scode = (IFilterReturnCodes)filter.GetText(ref pcwcBuffer, chunkBuffer);
+				scode = (FilterReturnCodes)filter.GetText(ref pcwcBuffer, chunkBuffer);
 
 				if (pcwcBuffer > 0 && chunkBuffer.Length > 0)
 				{
@@ -183,7 +182,7 @@ namespace TextExtractor
 
 					yield return chunkBuffer.ToString(0, (int)pcwcBuffer);
 				}
-			} while (scode == IFilterReturnCodes.S_OK || scode == IFilterReturnCodes.FILTER_S_LAST_TEXT);
+			} while (scode == FilterReturnCodes.Success || scode == FilterReturnCodes.LastTextInCurrentChunk);
 		}
 	}
 }
